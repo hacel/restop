@@ -1,0 +1,21 @@
+{{define "base"}}
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="light dark">
+  <title>{{.Title}} · Restop</title>
+  <link rel="stylesheet" href="/assets/app.css">
+  <script src="/assets/htmx.min.js" defer></script>
+</head>
+<body hx-indicator=".htmx-indicator">
+  <header class="site-header">
+    <a class="brand" href="/" hx-get="/" hx-target="#main" hx-select="#main" hx-swap="outerHTML" hx-push-url="true">Restop</a>
+    <span class="subtitle">Read-only restic browser</span>
+  </header>
+  <div class="progress" aria-hidden="true"><span class="htmx-indicator"></span></div>
+  {{template "content" .}}
+</body>
+</html>
+{{end}}
