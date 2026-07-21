@@ -43,6 +43,16 @@ printf '%s' '[{"time":"2024-01-01T00:00:00Z","id":"old"},{"time":"2025-01-01T00:
 	if string(arguments) != "snapshots\n--json\n" {
 		t.Fatalf("unexpected arguments %q", arguments)
 	}
+	if _, err := client.Snapshots(context.Background(), "snapshot-id"); err != nil {
+		t.Fatal(err)
+	}
+	arguments, err = os.ReadFile(record)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if string(arguments) != "snapshots\n--json\nsnapshot-id\n" {
+		t.Fatalf("unexpected filtered arguments %q", arguments)
+	}
 }
 
 func TestDirectoryJSONLAndSorting(t *testing.T) {
@@ -66,6 +76,40 @@ func TestDirectoryJSONLAndSorting(t *testing.T) {
 	}
 	if got := []string{directory.Nodes[0].Name, directory.Nodes[1].Name, directory.Nodes[2].Name}; strings.Join(got, ",") != "Alpha,beta,z.txt" {
 		t.Fatalf("unexpected order or depth filtering: %v", got)
+	}
+}
+
+func TestSearchArgumentsFilteringAndSorting(t *testing.T) {
+	record := filepath.Join(t.TempDir(), "args")
+	client := New(fakeRestic(t, `printf '%s\n' "$@" > "$RECORD"
+printf '%s' '[{"snapshot":"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa","hits":3,"matches":[{"type":"file","path":"/work/z.txt","size":3},{"name":"Alpha","type":"dir","path":"/Alpha"},{"name":"link","type":"symlink","path":"/link"}]}]'
+`), time.Second, 2, 1)
+	t.Setenv("RECORD", record)
+	nodes, err := client.Search(context.Background(), strings.Repeat("a", 64), "-*.TXT")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(nodes) != 2 || nodes[0].Path != "/Alpha" || nodes[1].Path != "/work/z.txt" || nodes[1].Name != "z.txt" {
+		t.Fatalf("unexpected search results: %#v", nodes)
+	}
+	arguments, err := os.ReadFile(record)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if string(arguments) != "find\n--json\n--ignore-case\n--snapshot\n"+strings.Repeat("a", 64)+"\n--\n-*.TXT\n" {
+		t.Fatalf("unexpected arguments %q", arguments)
+	}
+}
+
+func TestSearchRejectsUnexpectedSnapshotAndMalformedMatches(t *testing.T) {
+	for _, output := range []string{
+		`[{"snapshot":"wrong","matches":[]}]`,
+		`[{"snapshot":"` + strings.Repeat("a", 64) + `","matches":[{"name":"missing-path","type":"file"}]}]`,
+	} {
+		client := New(fakeRestic(t, "printf '%s' '"+output+"'\n"), time.Second, 1, 1)
+		if _, err := client.Search(context.Background(), strings.Repeat("a", 64), "file"); err == nil || !strings.Contains(err.Error(), "decode") {
+			t.Fatalf("expected decode error for %s, got %v", output, err)
+		}
 	}
 }
 

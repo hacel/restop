@@ -18,6 +18,7 @@ import (
 	"strings"
 	"sync/atomic"
 	"time"
+	"unicode/utf8"
 
 	"restop/internal/restic"
 
@@ -38,6 +39,7 @@ type pageData struct {
 	restic.Directory
 	Path        string
 	DisplayPath string
+	SearchQuery string
 	Breadcrumbs []breadcrumb
 	Status      int
 	Heading     string
@@ -49,6 +51,7 @@ type Server struct {
 	logger    *slog.Logger
 	snapshots *template.Template
 	directory *template.Template
+	search    *template.Template
 	errorPage *template.Template
 	static    http.Handler
 	requests  atomic.Uint64
@@ -78,10 +81,11 @@ func shortID(snapshot restic.Snapshot) string {
 
 func templateFunctions() template.FuncMap {
 	return template.FuncMap{
-		"bytes":     formatBytes,
-		"localTime": humanize.Time,
-		"queryPath": url.QueryEscape,
-		"shortID":   shortID,
+		"bytes":      formatBytes,
+		"localTime":  humanize.Time,
+		"parentPath": path.Dir,
+		"queryPath":  url.QueryEscape,
+		"shortID":    shortID,
 	}
 }
 
@@ -98,6 +102,10 @@ func New(client *restic.Client, logger *slog.Logger) (*Server, error) {
 	if err != nil {
 		return nil, fmt.Errorf("parse directory template: %w", err)
 	}
+	search, err := parsePage("search.html")
+	if err != nil {
+		return nil, fmt.Errorf("parse search template: %w", err)
+	}
 	errorPage, err := parsePage("error.html")
 	if err != nil {
 		return nil, fmt.Errorf("parse error template: %w", err)
@@ -106,7 +114,7 @@ func New(client *restic.Client, logger *slog.Logger) (*Server, error) {
 	if err != nil {
 		return nil, fmt.Errorf("open static assets: %w", err)
 	}
-	return &Server{restic: client, logger: logger, snapshots: snapshots, directory: directory, errorPage: errorPage, static: http.FileServerFS(staticFS)}, nil
+	return &Server{restic: client, logger: logger, snapshots: snapshots, directory: directory, search: search, errorPage: errorPage, static: http.FileServerFS(staticFS)}, nil
 }
 
 func cleanRepositoryPath(value string) (string, error) {
@@ -207,6 +215,52 @@ func (s *Server) directoryHandler(w http.ResponseWriter, r *http.Request) {
 		Title: repositoryPath, Directory: directory, Path: repositoryPath,
 		DisplayPath: repositoryPath, Breadcrumbs: makeBreadcrumbs(directory, repositoryPath),
 	})
+}
+
+func (s *Server) searchHandler(w http.ResponseWriter, r *http.Request) {
+	if err := validateSnapshotID(r.PathValue("id")); err != nil {
+		s.renderError(w, http.StatusBadRequest, "Invalid snapshot", err.Error())
+		return
+	}
+	query := strings.TrimSpace(r.URL.Query().Get("q"))
+	if !utf8.ValidString(query) {
+		s.renderError(w, http.StatusBadRequest, "Invalid search", "search must be valid UTF-8")
+		return
+	}
+	if utf8.RuneCountInString(query) > 256 {
+		s.renderError(w, http.StatusBadRequest, "Invalid search", "search must be 256 characters or fewer")
+		return
+	}
+	if strings.ContainsRune(query, 0) {
+		s.renderError(w, http.StatusBadRequest, "Invalid search", "search contains an invalid character")
+		return
+	}
+
+	// Load the selected snapshot so direct search URLs retain the browsing context.
+	snapshots, err := s.restic.Snapshots(r.Context(), r.PathValue("id"))
+	if err != nil {
+		s.handleFailure(w, r, err)
+		return
+	}
+	if len(snapshots) != 1 || snapshots[0].ID != r.PathValue("id") {
+		s.renderError(w, http.StatusNotFound, "Not found", "The requested snapshot does not exist.")
+		return
+	}
+	data := pageData{Title: "Search", SearchQuery: query}
+	data.Snapshot = snapshots[0]
+
+	// An empty query renders the search page without starting a find command.
+	if query == "" {
+		s.render(w, s.search, http.StatusOK, data)
+		return
+	}
+	nodes, err := s.restic.Search(r.Context(), r.PathValue("id"), query)
+	if err != nil {
+		s.handleFailure(w, r, err)
+		return
+	}
+	data.Nodes = nodes
+	s.render(w, s.search, http.StatusOK, data)
 }
 
 func downloadName(node restic.Node, snapshotID string) string {
@@ -310,6 +364,7 @@ func (s *Server) Handler() http.Handler {
 	mux.Handle("GET /assets/", http.StripPrefix("/assets/", s.static))
 	mux.HandleFunc("GET /healthz", healthHandler)
 	mux.HandleFunc("GET /snapshots/{id}/download", s.downloadHandler)
+	mux.HandleFunc("GET /snapshots/{id}/search", s.searchHandler)
 	mux.HandleFunc("GET /snapshots/{id}", s.directoryHandler)
 	mux.HandleFunc("GET /{$}", s.snapshotsHandler)
 	return s.middleware(mux)

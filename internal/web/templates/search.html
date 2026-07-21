@@ -1,0 +1,39 @@
+{{define "content"}}
+<main id="main" class="container">
+  <nav class="breadcrumbs" aria-label="Breadcrumb">
+    <a href="/" hx-get="/" hx-target="#main" hx-select="#main" hx-swap="outerHTML" hx-push-url="true">Snapshots</a>
+    <span aria-hidden="true">/</span>
+    <a href="/snapshots/{{.Snapshot.ID}}?path=%2F" hx-get="/snapshots/{{.Snapshot.ID}}?path=%2F" hx-target="#main" hx-select="#main" hx-swap="outerHTML" hx-push-url="true">{{shortID .Snapshot}}</a>
+    <span aria-hidden="true">/</span>
+    <span aria-current="page">Search</span>
+  </nav>
+  <div class="page-heading">
+    <div><p class="eyebrow">{{template "snapshot-eyebrow" .}}</p><h1>Search</h1></div>
+    {{if .SearchQuery}}<span class="count">{{len .Nodes}} found</span>{{end}}
+  </div>
+  {{template "snapshot-search" .}}
+  {{if .SearchQuery}}
+    {{if .Nodes}}
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>Name</th><th>Location</th><th>Size</th><th>Modified</th></tr></thead>
+        <tbody>
+        {{range .Nodes}}
+          <tr>
+            <td class="name-cell"><span class="type-icon" aria-hidden="true">{{if eq .Type "dir"}}▸{{else}}·{{end}}</span>{{if eq .Type "dir"}}<a class="row-link" href="/snapshots/{{$.Snapshot.ID}}?path={{queryPath .Path}}" hx-get="/snapshots/{{$.Snapshot.ID}}?path={{queryPath .Path}}" hx-target="#main" hx-select="#main" hx-swap="outerHTML" hx-push-url="true">{{.Name}}</a>{{else}}<a class="row-link file-row-link" href="/snapshots/{{$.Snapshot.ID}}/download?path={{queryPath .Path}}">{{.Name}}</a>{{end}}</td>
+            <td class="wrap location-cell"><a class="secondary-row-link" href="/snapshots/{{$.Snapshot.ID}}?path={{queryPath (parentPath .Path)}}" hx-get="/snapshots/{{$.Snapshot.ID}}?path={{queryPath (parentPath .Path)}}" hx-target="#main" hx-select="#main" hx-swap="outerHTML" hx-push-url="true">{{parentPath .Path}}</a></td>
+            <td>{{if eq .Type "file"}}{{bytes .Size}}{{else}}—{{end}}</td>
+            <td>{{if .ModTime.IsZero}}—{{else}}{{localTime .ModTime}}{{end}}</td>
+          </tr>
+        {{end}}
+        </tbody>
+      </table>
+    </div>
+    {{else}}
+    <div class="empty"><h2>No matches</h2><p>No files or directories in this snapshot match <code>{{.SearchQuery}}</code>.</p></div>
+    {{end}}
+  {{else}}
+  <div class="empty"><h2>Search this snapshot</h2><p>Enter a filename or restic pattern. Searches are case-insensitive.</p></div>
+  {{end}}
+</main>
+{{end}}

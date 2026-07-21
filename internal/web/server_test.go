@@ -47,6 +47,9 @@ ls)
     printf '%s\n' '{"struct_type":"node","name":"a&b","type":"dir","path":"/a&b"}'
   fi
   ;;
+find)
+  printf '%s' '[{"snapshot":"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa","hits":3,"matches":[{"name":"report & notes.txt","type":"file","path":"/work/report & notes.txt","size":2048,"mtime":"2024-01-02T03:04:05Z"},{"name":"Reports","type":"dir","path":"/Reports"},{"name":"current","type":"symlink","path":"/current"}]}]'
+  ;;
 dump)
   printf payload
   ;;
@@ -112,6 +115,70 @@ func TestDirectorySortsAndRoundTripsNames(t *testing.T) {
 	}
 	if strings.Contains(body, ">Root<") {
 		t.Fatal("snapshot breadcrumb still uses the root label")
+	}
+	for _, expected := range []string{
+		`action="/snapshots/` + testSnapshotID + `/search"`,
+		`method="get"`,
+		`name="q"`,
+	} {
+		if !strings.Contains(body, expected) {
+			t.Fatalf("directory search form missing %q: %s", expected, body)
+		}
+	}
+}
+
+func TestSnapshotSearchUsesURLQueryAndLinksResults(t *testing.T) {
+	response := request(t, fixtureServer(t), "/snapshots/"+testSnapshotID+"/search?q=report%20%26%20notes")
+	if response.Code != http.StatusOK {
+		t.Fatalf("status %d: %s", response.Code, response.Body.String())
+	}
+	if response.Header().Get("Content-Type") != "text/html; charset=utf-8" {
+		t.Fatalf("unexpected content type %q", response.Header().Get("Content-Type"))
+	}
+	body := response.Body.String()
+	for _, expected := range []string{
+		`value="report &amp; notes"`,
+		`2 found`,
+		`host&lt;script&gt;`,
+		`Created`,
+		`2.0 KiB`,
+		`report &amp; notes.txt`,
+		`class="row-link file-row-link"`,
+		`class="wrap location-cell"`,
+		`class="secondary-row-link"`,
+		`href="/snapshots/` + testSnapshotID + `/download?path=%252Fwork%252Freport%2b%2526%2bnotes.txt"`,
+		`href="/snapshots/` + testSnapshotID + `?path=%252FReports"`,
+		`href="/snapshots/` + testSnapshotID + `?path=%252Fwork"`,
+	} {
+		if !strings.Contains(body, expected) {
+			t.Fatalf("search response missing %q: %s", expected, body)
+		}
+	}
+	if strings.Contains(body, ">current<") {
+		t.Fatalf("unsupported search result was rendered: %s", body)
+	}
+}
+
+func TestSnapshotSearchEscapesQuery(t *testing.T) {
+	response := request(t, fixtureServer(t), "/snapshots/"+testSnapshotID+"/search?q=%3Cscript%3E%26")
+	if response.Code != http.StatusOK {
+		t.Fatalf("status %d: %s", response.Code, response.Body.String())
+	}
+	body := response.Body.String()
+	if !strings.Contains(body, `value="&lt;script&gt;&amp;"`) || strings.Contains(body, `<script>&`) {
+		t.Fatalf("search query was not escaped: %s", body)
+	}
+}
+
+func TestSnapshotSearchEmptyAndInvalidQueries(t *testing.T) {
+	handler := fixtureServer(t)
+	response := request(t, handler, "/snapshots/"+testSnapshotID+"/search")
+	if response.Code != http.StatusOK || !strings.Contains(response.Body.String(), "Search this snapshot") {
+		t.Fatalf("unexpected empty search response: %d %s", response.Code, response.Body.String())
+	}
+	response = request(t, handler, "/snapshots/"+testSnapshotID+"/search?q="+strings.Repeat("a", 257))
+	if response.Code != http.StatusBadRequest || !strings.Contains(response.Body.String(), "256 characters or fewer") {
+		t.Fatalf("unexpected long search response: %d %s", response.Code, response.Body.String())
 	}
 }
 

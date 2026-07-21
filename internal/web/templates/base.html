@@ -19,3 +19,13 @@
 </body>
 </html>
 {{end}}
+
+{{define "snapshot-search"}}
+<form class="search-form" action="/snapshots/{{.Snapshot.ID}}/search" method="get" hx-get="/snapshots/{{.Snapshot.ID}}/search" hx-target="#main" hx-select="#main" hx-swap="outerHTML" hx-push-url="true">
+  <label class="sr-only" for="snapshot-search">Search this snapshot</label>
+  <input id="snapshot-search" type="search" name="q" value="{{.SearchQuery}}" maxlength="256" placeholder="Filename or pattern, such as *.pdf" required>
+  <button class="button" type="submit">Search</button>
+</form>
+{{end}}
+
+{{define "snapshot-eyebrow"}}Snapshot <code>{{shortID .Snapshot}}</code> · {{or .Snapshot.Hostname "Unknown host"}} · Created {{if .Snapshot.Time.IsZero}}unknown{{else}}{{localTime .Snapshot.Time}}{{end}} · {{if .Snapshot.Summary}}{{bytes .Snapshot.Summary.TotalBytesProcessed}}{{else}}Unknown size{{end}}{{end}}

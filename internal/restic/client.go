@@ -181,8 +181,8 @@ func decodeDirectory(data []byte) (Directory, error) {
 	return directory, nil
 }
 
-func (c *Client) Snapshots(ctx context.Context) ([]Snapshot, error) {
-	output, err := c.run(ctx, true, "snapshots", "--json")
+func (c *Client) Snapshots(ctx context.Context, snapshotIDs ...string) ([]Snapshot, error) {
+	output, err := c.run(ctx, true, append([]string{"snapshots", "--json"}, snapshotIDs...)...)
 	if err != nil {
 		return nil, err
 	}
@@ -243,6 +243,52 @@ func (c *Client) Directory(ctx context.Context, snapshotID, repositoryPath strin
 	})
 	directory.Nodes = children
 	return directory, nil
+}
+
+func (c *Client) Search(ctx context.Context, snapshotID, query string) ([]Node, error) {
+	output, err := c.run(ctx, true, "find", "--json", "--ignore-case", "--snapshot", snapshotID, "--", query)
+	if err != nil {
+		return nil, err
+	}
+
+	// Decode every result group while verifying restic honored the snapshot scope.
+	var results []struct {
+		Snapshot string `json:"snapshot"`
+		Matches  []Node `json:"matches"`
+	}
+	if err := json.Unmarshal(output, &results); err != nil {
+		return nil, fmt.Errorf("decode restic search: %w", err)
+	}
+
+	// Keep search results consistent with the browsable and downloadable node types.
+	var nodes []Node
+	for _, result := range results {
+		if result.Snapshot != snapshotID {
+			return nil, errors.New("decode restic search: result has an unexpected snapshot ID")
+		}
+		for _, node := range result.Matches {
+			if node.Type != "file" && node.Type != "dir" {
+				continue
+			}
+			if node.Path == "" || !strings.HasPrefix(node.Path, "/") {
+				return nil, errors.New("decode restic search: node is missing required fields")
+			}
+			if node.Name == "" {
+				node.Name = path.Base(node.Path)
+			}
+			nodes = append(nodes, node)
+		}
+	}
+
+	// Stable path ordering makes results predictable across restic versions.
+	sort.SliceStable(nodes, func(i, j int) bool {
+		left, right := strings.ToLower(nodes[i].Path), strings.ToLower(nodes[j].Path)
+		if left == right {
+			return nodes[i].Path < nodes[j].Path
+		}
+		return left < right
+	})
+	return nodes, nil
 }
 
 func (c *Client) Stat(ctx context.Context, snapshotID, repositoryPath string) (Node, error) {

@@ -8,9 +8,10 @@
     {{end}}
   </nav>
   <div class="page-heading">
-    <div><p class="eyebrow">Snapshot <code>{{shortID .Snapshot}}</code> · {{or .Snapshot.Hostname "Unknown host"}} · Created {{if .Snapshot.Time.IsZero}}unknown{{else}}{{localTime .Snapshot.Time}}{{end}} · {{if .Snapshot.Summary}}{{bytes .Snapshot.Summary.TotalBytesProcessed}}{{else}}Unknown size{{end}}</p><h1>{{.DisplayPath}}</h1></div>
+    <div><p class="eyebrow">{{template "snapshot-eyebrow" .}}</p><h1>{{.DisplayPath}}</h1></div>
     <a class="button" href="/snapshots/{{.Snapshot.ID}}/download?path={{queryPath .Path}}">Download directory</a>
   </div>
+  {{template "snapshot-search" .}}
   {{if .Nodes}}
   <div class="table-wrap">
     <table>
