@@ -120,14 +120,41 @@ func TestFileDownloadHeadersAndBody(t *testing.T) {
 	if response.Code != http.StatusOK {
 		t.Fatalf("status %d: %s", response.Code, response.Body.String())
 	}
-	if response.Header().Get("Content-Type") != "application/octet-stream" {
+	if response.Header().Get("Content-Type") != "text/plain; charset=utf-8" {
 		t.Fatalf("unexpected content type %q", response.Header().Get("Content-Type"))
 	}
-	if disposition := response.Header().Get("Content-Disposition"); !strings.HasPrefix(disposition, "attachment;") || !strings.Contains(disposition, `filename="odd \" name.txt"`) {
+	if disposition := response.Header().Get("Content-Disposition"); !strings.HasPrefix(disposition, "inline;") || !strings.Contains(disposition, `filename="odd \" name.txt"`) {
 		t.Fatalf("unsafe or missing disposition %q", disposition)
 	}
 	if response.Body.String() != "payload" {
 		t.Fatalf("unexpected payload %q", response.Body.String())
+	}
+}
+
+func TestInlineContentTypes(t *testing.T) {
+	for name, expected := range map[string]string{
+		"document.PDF": "application/pdf",
+		"image.avif":   "image/avif",
+		"image.bmp":    "image/bmp",
+		"image.gif":    "image/gif",
+		"image.ico":    "image/x-icon",
+		"image.jpeg":   "image/jpeg",
+		"image.jpg":    "image/jpeg",
+		"image.png":    "image/png",
+		"image.webp":   "image/webp",
+		"notes.txt":    "text/plain; charset=utf-8",
+	} {
+		actual, ok := inlineContentType(restic.Node{Path: "/" + name})
+		if !ok || actual != expected {
+			t.Errorf("inlineContentType(%q) = %q, %t; want %q, true", name, actual, ok, expected)
+		}
+	}
+
+	// Active and unknown formats must remain downloads.
+	for _, name := range []string{"page.html", "image.svg", "script.js", "archive.zip"} {
+		if actual, ok := inlineContentType(restic.Node{Path: "/" + name}); ok {
+			t.Errorf("inlineContentType(%q) = %q, true; want false", name, actual)
+		}
 	}
 }
 

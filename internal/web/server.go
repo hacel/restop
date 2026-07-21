@@ -221,6 +221,31 @@ func downloadName(node restic.Node, snapshotID string) string {
 	return name
 }
 
+func inlineContentType(node restic.Node) (string, bool) {
+	switch strings.ToLower(path.Ext(node.Path)) {
+	case ".pdf":
+		return "application/pdf", true
+	case ".avif":
+		return "image/avif", true
+	case ".bmp":
+		return "image/bmp", true
+	case ".gif":
+		return "image/gif", true
+	case ".ico":
+		return "image/x-icon", true
+	case ".jpg", ".jpeg":
+		return "image/jpeg", true
+	case ".png":
+		return "image/png", true
+	case ".webp":
+		return "image/webp", true
+	case ".txt":
+		return "text/plain; charset=utf-8", true
+	default:
+		return "", false
+	}
+}
+
 func (s *Server) downloadHandler(w http.ResponseWriter, r *http.Request) {
 	if err := validateSnapshotID(r.PathValue("id")); err != nil {
 		s.renderError(w, http.StatusBadRequest, "Invalid snapshot", err.Error())
@@ -247,13 +272,15 @@ func (s *Server) downloadHandler(w http.ResponseWriter, r *http.Request) {
 	}
 	defer dump.Close()
 
-	// Downloads bypass HTMX and stream restic output without buffering it in memory.
+	// Stream safe browser-readable files inline while keeping other items as attachments.
+	contentType, disposition := "application/octet-stream", "attachment"
 	if node.Type == "dir" {
-		w.Header().Set("Content-Type", "application/x-tar")
-	} else {
-		w.Header().Set("Content-Type", "application/octet-stream")
+		contentType = "application/x-tar"
+	} else if inlineType, ok := inlineContentType(node); ok {
+		contentType, disposition = inlineType, "inline"
 	}
-	w.Header().Set("Content-Disposition", mime.FormatMediaType("attachment", map[string]string{"filename": downloadName(node, r.PathValue("id"))}))
+	w.Header().Set("Content-Type", contentType)
+	w.Header().Set("Content-Disposition", mime.FormatMediaType(disposition, map[string]string{"filename": downloadName(node, r.PathValue("id"))}))
 	w.Header().Set("X-Content-Type-Options", "nosniff")
 	if _, err := io.Copy(w, dump); err != nil {
 		s.logger.Error("stream download", "request_id", r.Context().Value(requestIDKey{}), "error", err)
