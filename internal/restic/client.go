@@ -29,6 +29,9 @@ type Snapshot struct {
 	Tags     []string  `json:"tags"`
 	ID       string    `json:"id"`
 	ShortID  string    `json:"short_id"`
+	Summary  *struct {
+		TotalBytesProcessed uint64 `json:"total_bytes_processed"`
+	} `json:"summary"`
 }
 
 type Node struct {

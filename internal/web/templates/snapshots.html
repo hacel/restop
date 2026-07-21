@@ -7,13 +7,14 @@
   {{if .Snapshots}}
   <div class="table-wrap">
     <table>
-      <thead><tr><th>Created</th><th>Host</th><th>Paths</th><th>Tags</th><th>ID</th></tr></thead>
+      <thead><tr><th>Created</th><th>Host</th><th>Paths</th><th>Size</th><th>Tags</th><th>ID</th></tr></thead>
       <tbody>
       {{range .Snapshots}}
         <tr>
           <td><a class="row-link" href="/snapshots/{{.ID}}?path=%2F" hx-get="/snapshots/{{.ID}}?path=%2F" hx-target="#main" hx-select="#main" hx-swap="outerHTML" hx-push-url="true">{{localTime .Time}}</a></td>
           <td>{{or .Hostname "—"}}</td>
           <td class="wrap">{{range $i, $path := .Paths}}{{if $i}}<br>{{end}}{{$path}}{{else}}—{{end}}</td>
+          <td>{{if .Summary}}{{bytes .Summary.TotalBytesProcessed}}{{else}}—{{end}}</td>
           <td>{{range $i, $tag := .Tags}}{{if $i}}, {{end}}{{$tag}}{{else}}—{{end}}</td>
           <td><code>{{shortID .}}</code></td>
         </tr>

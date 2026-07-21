@@ -33,7 +33,7 @@ func fixtureServer(t *testing.T) http.Handler {
 	t.Helper()
 	return testServer(t, `case "$1" in
 snapshots)
-  printf '%s' '[{"time":"2024-01-01T00:00:00Z","hostname":"host<script>","paths":["/data&more"],"tags":["daily"],"id":"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa","short_id":"aaaaaaaa"}]'
+  printf '%s' '[{"time":"2024-01-01T00:00:00Z","hostname":"host<script>","paths":["/data&more"],"tags":["daily"],"id":"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa","short_id":"aaaaaaaa","summary":{"total_bytes_processed":2048}}]'
   ;;
 ls)
   if [ "$4" = "/" ]; then
@@ -67,7 +67,7 @@ func TestSnapshotsPageEscapesAndEnhancesLinks(t *testing.T) {
 		t.Fatalf("status %d: %s", response.Code, response.Body.String())
 	}
 	body := response.Body.String()
-	for _, expected := range []string{"ago", "host&lt;script&gt;", "/data&amp;more", "hx-get=", "class=\"row-link\"", "href=\"/snapshots/" + testSnapshotID} {
+	for _, expected := range []string{"ago", "host&lt;script&gt;", "/data&amp;more", "2.0 KiB", "hx-get=", "class=\"row-link\"", "href=\"/snapshots/" + testSnapshotID} {
 		if !strings.Contains(body, expected) {
 			t.Fatalf("response missing %q: %s", expected, body)
 		}

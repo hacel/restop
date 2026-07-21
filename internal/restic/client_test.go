@@ -23,7 +23,7 @@ func fakeRestic(t *testing.T, body string) string {
 func TestSnapshotsArgumentsAndSorting(t *testing.T) {
 	record := filepath.Join(t.TempDir(), "args")
 	client := New(fakeRestic(t, `printf '%s\n' "$@" > "$RECORD"
-printf '%s' '[{"time":"2024-01-01T00:00:00Z","id":"old"},{"time":"2025-01-01T00:00:00Z","id":"new"}]'
+printf '%s' '[{"time":"2024-01-01T00:00:00Z","id":"old"},{"time":"2025-01-01T00:00:00Z","id":"new","summary":{"total_bytes_processed":2048}}]'
 `), time.Second, 2, 1)
 	t.Setenv("RECORD", record)
 	snapshots, err := client.Snapshots(context.Background())
@@ -32,6 +32,9 @@ printf '%s' '[{"time":"2024-01-01T00:00:00Z","id":"old"},{"time":"2025-01-01T00:
 	}
 	if snapshots[0].ID != "new" {
 		t.Fatalf("snapshots were not newest first: %#v", snapshots)
+	}
+	if snapshots[0].Summary == nil || snapshots[0].Summary.TotalBytesProcessed != 2048 {
+		t.Fatalf("snapshot size was not decoded: %#v", snapshots[0])
 	}
 	arguments, err := os.ReadFile(record)
 	if err != nil {
