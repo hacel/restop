@@ -7,3 +7,4 @@
 - Keep templates functional without JavaScript. Preserve contextual escaping and use HTMX only as progressive enhancement.
 - Keep Restop read-only and unauthenticated: do not add HTTP credentials or mutations, change the loopback default, or log repository paths, credentials, or download query strings.
 - Use conventional commits with only `feat`, `fix`, `docs`, `refactor`, or `chore`; add a brief body when intent is unclear.
+- Try to understand user intent before making edits.
