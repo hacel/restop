@@ -310,8 +310,7 @@ func (c *Client) Dump(ctx context.Context, snapshotID, repositoryPath string) (*
 }
 
 func Diagnostic(err error) string {
-	var commandErr *commandError
-	if errors.As(err, &commandErr) {
+	if commandErr, ok := errors.AsType[*commandError](err); ok {
 		return commandErr.Diagnostic()
 	}
 	return err.Error()

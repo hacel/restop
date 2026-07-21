@@ -2,7 +2,7 @@ export GOCACHE := env_var_or_default('GOCACHE', env_var_or_default('TMPDIR', '/t
 
 # Rebuild and restart the server as source files change during development.
 run:
-    air --log.main_only true --build.cmd "go build -o /tmp/restop-air ./cmd/restop" --build.bin "/tmp/restop-air"
+    air --tmp_dir "/tmp" --log.main_only true --build.cmd "go build -o /tmp/restop-air ./cmd/restop" --build.entrypoint "/tmp/restop-air"
 
 test:
     go fmt ./...

@@ -13,6 +13,7 @@ import (
 	"net/url"
 	"path"
 	"regexp"
+	"slices"
 	"strconv"
 	"strings"
 	"sync/atomic"
@@ -124,10 +125,8 @@ func cleanRepositoryPath(value string) (string, error) {
 	if strings.ContainsRune(value, 0) || !strings.HasPrefix(value, "/") || path.Clean(value) != value {
 		return "", errors.New("path must be a cleaned absolute repository path")
 	}
-	for _, component := range strings.Split(value, "/") {
-		if component == ".." {
-			return "", errors.New("path traversal is not allowed")
-		}
+	if slices.Contains(strings.Split(value, "/"), "..") {
+		return "", errors.New("path traversal is not allowed")
 	}
 	return value, nil
 }
