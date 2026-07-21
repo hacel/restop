@@ -102,7 +102,7 @@ func TestDirectorySortsAndRoundTripsNames(t *testing.T) {
 	if strings.Contains(body, "<th><span class=\"sr-only\">Actions</span></th>") || strings.Contains(body, "aria-label=\"Download ") {
 		t.Fatalf("directory table still contains the download column: %s", body)
 	}
-	if !strings.Contains(body, "aria-current=\"page\">aaaaaaaa · host&lt;script&gt;") {
+	if !strings.Contains(body, "aria-current=\"page\">aaaaaaaa") {
 		t.Fatal("snapshot breadcrumb is not accessible or escaped")
 	}
 	for _, expected := range []string{"Snapshot <code>aaaaaaaa</code>", "host&lt;script&gt;", "Created", "2.0 KiB"} {

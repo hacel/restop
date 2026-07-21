@@ -19,8 +19,9 @@ import (
 	"sync/atomic"
 	"time"
 
-	"github.com/dustin/go-humanize"
 	"restop/internal/restic"
+
+	"github.com/dustin/go-humanize"
 )
 
 var snapshotIDPattern = regexp.MustCompile(`^[0-9a-f]{64}$`)
@@ -138,9 +139,6 @@ func validateSnapshotID(value string) error {
 
 func makeBreadcrumbs(directory restic.Directory, repositoryPath string) []breadcrumb {
 	crumbs := []breadcrumb{{Name: shortID(directory.Snapshot), Path: "/", Current: repositoryPath == "/"}}
-	if directory.Snapshot.Hostname != "" {
-		crumbs[0].Name += " · " + directory.Snapshot.Hostname
-	}
 	if repositoryPath == "/" {
 		return crumbs
 	}
