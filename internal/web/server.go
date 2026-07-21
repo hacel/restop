@@ -32,13 +32,11 @@ type breadcrumb struct {
 }
 
 type pageData struct {
-	Title       string
-	Snapshots   []restic.Snapshot
-	SnapshotID  string
-	ShortID     string
+	Title     string
+	Snapshots []restic.Snapshot
+	restic.Directory
 	Path        string
 	DisplayPath string
-	Nodes       []restic.Node
 	Breadcrumbs []breadcrumb
 	Status      int
 	Heading     string
@@ -71,10 +69,10 @@ func formatBytes(size uint64) string {
 }
 
 func shortID(snapshot restic.Snapshot) string {
-	if snapshot.ShortID != "" {
-		return snapshot.ShortID
+	if snapshot.ShortID == "" {
+		return snapshot.ID[:min(8, len(snapshot.ID))]
 	}
-	return snapshot.ID[:min(8, len(snapshot.ID))]
+	return snapshot.ShortID[:min(8, len(snapshot.ShortID))]
 }
 
 func templateFunctions() template.FuncMap {
@@ -138,12 +136,15 @@ func validateSnapshotID(value string) error {
 	return nil
 }
 
-func makeBreadcrumbs(repositoryPath string) []breadcrumb {
+func makeBreadcrumbs(directory restic.Directory, repositoryPath string) []breadcrumb {
+	crumbs := []breadcrumb{{Name: shortID(directory.Snapshot), Path: "/", Current: repositoryPath == "/"}}
+	if directory.Snapshot.Hostname != "" {
+		crumbs[0].Name += " · " + directory.Snapshot.Hostname
+	}
 	if repositoryPath == "/" {
-		return []breadcrumb{{Name: "Root", Path: "/", Current: true}}
+		return crumbs
 	}
 	parts := strings.Split(strings.TrimPrefix(repositoryPath, "/"), "/")
-	crumbs := []breadcrumb{{Name: "Root", Path: "/"}}
 	for i, part := range parts {
 		crumbs = append(crumbs, breadcrumb{Name: part, Path: "/" + strings.Join(parts[:i+1], "/"), Current: i == len(parts)-1})
 	}
@@ -199,14 +200,14 @@ func (s *Server) directoryHandler(w http.ResponseWriter, r *http.Request) {
 		s.renderError(w, http.StatusBadRequest, "Invalid path", err.Error())
 		return
 	}
-	nodes, err := s.restic.Directory(r.Context(), r.PathValue("id"), repositoryPath)
+	directory, err := s.restic.Directory(r.Context(), r.PathValue("id"), repositoryPath)
 	if err != nil {
 		s.handleFailure(w, r, err)
 		return
 	}
 	s.render(w, s.directory, http.StatusOK, pageData{
-		Title: repositoryPath, SnapshotID: r.PathValue("id"), ShortID: r.PathValue("id")[:8], Path: repositoryPath,
-		DisplayPath: repositoryPath, Nodes: nodes, Breadcrumbs: makeBreadcrumbs(repositoryPath),
+		Title: repositoryPath, Directory: directory, Path: repositoryPath,
+		DisplayPath: repositoryPath, Breadcrumbs: makeBreadcrumbs(directory, repositoryPath),
 	})
 }
 

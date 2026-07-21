@@ -47,21 +47,24 @@ printf '%s' '[{"time":"2024-01-01T00:00:00Z","id":"old"},{"time":"2025-01-01T00:
 
 func TestDirectoryJSONLAndSorting(t *testing.T) {
 	client := New(fakeRestic(t, `printf '%s\n' \
-'{"struct_type":"snapshot","id":"ignored"}' \
+'{"struct_type":"snapshot","id":"ignored","hostname":"workstation"}' \
 '{"struct_type":"node","name":"z.txt","type":"file","path":"/z.txt","size":3}' \
 '{"struct_type":"node","name":"nested.txt","type":"file","path":"/dir/nested.txt"}' \
 '{"struct_type":"node","name":"Alpha","type":"dir","path":"/Alpha"}' \
 '{"struct_type":"node","name":"current","type":"symlink","path":"/current"}' \
 '{"struct_type":"node","name":"beta","type":"dir","path":"/beta"}'
 `), time.Second, 2, 1)
-	nodes, err := client.Directory(context.Background(), strings.Repeat("a", 64), "/")
+	directory, err := client.Directory(context.Background(), strings.Repeat("a", 64), "/")
 	if err != nil {
 		t.Fatal(err)
 	}
-	if len(nodes) != 3 {
-		t.Fatalf("non-file and non-directory nodes were not ignored: %#v", nodes)
+	if directory.Snapshot.Hostname != "workstation" || directory.Snapshot.ID != "ignored" {
+		t.Fatalf("snapshot was not decoded: %#v", directory.Snapshot)
 	}
-	if got := []string{nodes[0].Name, nodes[1].Name, nodes[2].Name}; strings.Join(got, ",") != "Alpha,beta,z.txt" {
+	if len(directory.Nodes) != 3 {
+		t.Fatalf("non-file and non-directory nodes were not ignored: %#v", directory.Nodes)
+	}
+	if got := []string{directory.Nodes[0].Name, directory.Nodes[1].Name, directory.Nodes[2].Name}; strings.Join(got, ",") != "Alpha,beta,z.txt" {
 		t.Fatalf("unexpected order or depth filtering: %v", got)
 	}
 }

@@ -42,6 +42,11 @@ type Node struct {
 	ModTime time.Time `json:"mtime"`
 }
 
+type Directory struct {
+	Snapshot Snapshot
+	Nodes    []Node
+}
+
 type commandError struct {
 	message string
 	stderr  string
@@ -141,24 +146,26 @@ func (c *Client) run(ctx context.Context, repository bool, args ...string) ([]by
 	return nil, &commandError{message: "restic command failed", stderr: stderr.String(), cause: err}
 }
 
-func decodeNodes(data []byte) ([]Node, error) {
+func decodeDirectory(data []byte) (Directory, error) {
 	decoder := json.NewDecoder(bytes.NewReader(data))
-	var nodes []Node
+	var directory Directory
 	for {
 		var value struct {
 			StructType string `json:"struct_type"`
+			Snapshot
 			Node
 		}
 		if err := decoder.Decode(&value); errors.Is(err, io.EOF) {
 			break
 		} else if err != nil {
-			return nil, fmt.Errorf("decode restic listing: %w", err)
+			return Directory{}, fmt.Errorf("decode restic listing: %w", err)
 		}
 		if value.StructType == "snapshot" {
+			directory.Snapshot = value.Snapshot
 			continue
 		}
 		if value.Type == "" {
-			return nil, errors.New("decode restic listing: node is missing required fields")
+			return Directory{}, errors.New("decode restic listing: node is missing required fields")
 		}
 
 		// Restic omits symlink targets from JSON listings, so expose only files and
@@ -167,11 +174,11 @@ func decodeNodes(data []byte) ([]Node, error) {
 			continue
 		}
 		if value.Path == "" || value.Path != "/" && value.Name == "" {
-			return nil, errors.New("decode restic listing: node is missing required fields")
+			return Directory{}, errors.New("decode restic listing: node is missing required fields")
 		}
-		nodes = append(nodes, value.Node)
+		directory.Nodes = append(directory.Nodes, value.Node)
 	}
-	return nodes, nil
+	return directory, nil
 }
 
 func (c *Client) Snapshots(ctx context.Context) ([]Snapshot, error) {
@@ -202,24 +209,24 @@ func (c *Client) Preflight(ctx context.Context) error {
 	return nil
 }
 
-func (c *Client) Directory(ctx context.Context, snapshotID, repositoryPath string) ([]Node, error) {
+func (c *Client) Directory(ctx context.Context, snapshotID, repositoryPath string) (Directory, error) {
 	output, err := c.run(ctx, true, "ls", "--json", snapshotID, repositoryPath)
 	if err != nil {
-		return nil, err
+		return Directory{}, err
 	}
-	nodes, err := decodeNodes(output)
+	directory, err := decodeDirectory(output)
 	if err != nil {
-		return nil, err
+		return Directory{}, err
 	}
-	for _, node := range nodes {
+	for _, node := range directory.Nodes {
 		if node.Path == repositoryPath && node.Type != "dir" {
-			return nil, ErrNotFound
+			return Directory{}, ErrNotFound
 		}
 	}
 
 	// Restic can return the selected node as well; expose only its direct children.
-	children := nodes[:0]
-	for _, node := range nodes {
+	children := directory.Nodes[:0]
+	for _, node := range directory.Nodes {
 		if node.Path != repositoryPath && path.Dir(node.Path) == repositoryPath {
 			children = append(children, node)
 		}
@@ -234,18 +241,19 @@ func (c *Client) Directory(ctx context.Context, snapshotID, repositoryPath strin
 		}
 		return left < right
 	})
-	return children, nil
+	directory.Nodes = children
+	return directory, nil
 }
 
 func (c *Client) Stat(ctx context.Context, snapshotID, repositoryPath string) (Node, error) {
 	if repositoryPath == "/" {
 		return Node{Name: "/", Type: "dir", Path: "/"}, nil
 	}
-	nodes, err := c.Directory(ctx, snapshotID, path.Dir(repositoryPath))
+	directory, err := c.Directory(ctx, snapshotID, path.Dir(repositoryPath))
 	if err != nil {
 		return Node{}, err
 	}
-	for _, node := range nodes {
+	for _, node := range directory.Nodes {
 		if node.Path == repositoryPath {
 			return node, nil
 		}

@@ -53,9 +53,9 @@ func TestIntegrationRepository(t *testing.T) {
 		t.Fatalf("snapshots: %v, %d found", err, len(snapshots))
 	}
 	repositoryPath := filepath.ToSlash(filepath.Join(fixtures, "nested"))
-	nodes, err := client.Directory(context.Background(), snapshots[0].ID, repositoryPath)
-	if err != nil || len(nodes) != 1 || nodes[0].Name != "hello.txt" {
-		t.Fatalf("directory: %v, %#v", err, nodes)
+	listing, err := client.Directory(context.Background(), snapshots[0].ID, repositoryPath)
+	if err != nil || len(listing.Nodes) != 1 || listing.Nodes[0].Name != "hello.txt" {
+		t.Fatalf("directory: %v, %#v", err, listing.Nodes)
 	}
 	file, err := client.Dump(context.Background(), snapshots[0].ID, repositoryPath+"/hello.txt")
 	if err != nil {

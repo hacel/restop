@@ -36,6 +36,7 @@ snapshots)
   printf '%s' '[{"time":"2024-01-01T00:00:00Z","hostname":"host<script>","paths":["/data&more"],"tags":["daily"],"id":"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa","short_id":"aaaaaaaa","summary":{"total_bytes_processed":2048}}]'
   ;;
 ls)
+  printf '%s\n' '{"struct_type":"snapshot","id":"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa","short_id":"aaaaaaaa","hostname":"host<script>","time":"2024-01-01T00:00:00Z","summary":{"total_bytes_processed":2048}}'
   if [ "$4" = "/" ]; then
     printf '%s\n' \
       '{"struct_type":"node","name":"/","type":"dir","path":"/"}' \
@@ -101,8 +102,16 @@ func TestDirectorySortsAndRoundTripsNames(t *testing.T) {
 	if strings.Contains(body, "<th><span class=\"sr-only\">Actions</span></th>") || strings.Contains(body, "aria-label=\"Download ") {
 		t.Fatalf("directory table still contains the download column: %s", body)
 	}
-	if !strings.Contains(body, "aria-current=\"page\">Root") {
-		t.Fatal("root breadcrumb is not accessible")
+	if !strings.Contains(body, "aria-current=\"page\">aaaaaaaa · host&lt;script&gt;") {
+		t.Fatal("snapshot breadcrumb is not accessible or escaped")
+	}
+	for _, expected := range []string{"Snapshot <code>aaaaaaaa</code>", "host&lt;script&gt;", "Created", "2.0 KiB"} {
+		if !strings.Contains(body, expected) {
+			t.Fatalf("snapshot heading missing %q: %s", expected, body)
+		}
+	}
+	if strings.Contains(body, ">Root<") {
+		t.Fatal("snapshot breadcrumb still uses the root label")
 	}
 }
 
