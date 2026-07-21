@@ -28,4 +28,6 @@
 </form>
 {{end}}
 
-{{define "snapshot-eyebrow"}}Snapshot <code>{{shortID .Snapshot}}</code> · {{or .Snapshot.Hostname "Unknown host"}} · Created {{if .Snapshot.Time.IsZero}}unknown{{else}}{{localTime .Snapshot.Time}}{{end}} · {{if .Snapshot.Summary}}{{bytes .Snapshot.Summary.TotalBytesProcessed}}{{else}}Unknown size{{end}}{{end}}
+{{define "snapshot-eyebrow"}}Snapshot <code>{{shortID .Snapshot}}</code> · {{or .Snapshot.Hostname "Unknown host"}} · Created {{if .Snapshot.Time.IsZero}}unknown{{else}}{{template "relative-time" .Snapshot.Time}}{{end}} · {{if .Snapshot.Summary}}{{bytes .Snapshot.Summary.TotalBytesProcessed}}{{else}}Unknown size{{end}}{{end}}
+
+{{define "relative-time"}}<time datetime="{{isoTime .}}" title="{{exactTime .}}">{{localTime .}}</time>{{end}}

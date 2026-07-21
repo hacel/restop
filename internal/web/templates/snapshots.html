@@ -11,7 +11,7 @@
       <tbody>
       {{range .Snapshots}}
         <tr>
-          <td><a class="row-link" href="/snapshots/{{.ID}}?path=%2F" hx-get="/snapshots/{{.ID}}?path=%2F" hx-target="#main" hx-select="#main" hx-swap="outerHTML" hx-push-url="true">{{localTime .Time}}</a></td>
+          <td><a class="row-link" href="/snapshots/{{.ID}}?path=%2F" title="{{exactTime .Time}}" hx-get="/snapshots/{{.ID}}?path=%2F" hx-target="#main" hx-select="#main" hx-swap="outerHTML" hx-push-url="true">{{template "relative-time" .Time}}</a></td>
           <td>{{or .Hostname "—"}}</td>
           <td class="wrap">{{range $i, $path := .Paths}}{{if $i}}<br>{{end}}{{$path}}{{else}}—{{end}}</td>
           <td>{{if .Summary}}{{bytes .Summary.TotalBytesProcessed}}{{else}}—{{end}}</td>

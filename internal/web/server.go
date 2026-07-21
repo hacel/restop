@@ -30,6 +30,7 @@ var snapshotIDPattern = regexp.MustCompile(`^[0-9a-f]{64}$`)
 type breadcrumb struct {
 	Name    string
 	Path    string
+	Title   string
 	Current bool
 }
 
@@ -79,9 +80,19 @@ func shortID(snapshot restic.Snapshot) string {
 	return snapshot.ShortID[:min(8, len(snapshot.ShortID))]
 }
 
+func exactTime(value time.Time) string {
+	return value.Format("02 Jan 2006, 15:04:05 MST")
+}
+
+func isoTime(value time.Time) string {
+	return value.Format(time.RFC3339Nano)
+}
+
 func templateFunctions() template.FuncMap {
 	return template.FuncMap{
 		"bytes":      formatBytes,
+		"exactTime":  exactTime,
+		"isoTime":    isoTime,
 		"localTime":  humanize.Time,
 		"parentPath": path.Dir,
 		"queryPath":  url.QueryEscape,
@@ -147,6 +158,9 @@ func validateSnapshotID(value string) error {
 
 func makeBreadcrumbs(directory restic.Directory, repositoryPath string) []breadcrumb {
 	crumbs := []breadcrumb{{Name: shortID(directory.Snapshot), Path: "/", Current: repositoryPath == "/"}}
+	if !directory.Snapshot.Time.IsZero() {
+		crumbs[0].Title = exactTime(directory.Snapshot.Time)
+	}
 	if repositoryPath == "/" {
 		return crumbs
 	}
