@@ -23,15 +23,15 @@ Restic's standard environment is inherited, including `RESTIC_REPOSITORY` or `RE
 
 ## Application configuration
 
-| Variable | Default | Purpose |
-| --- | --- | --- |
-| `RESTOP_ADDR` | `127.0.0.1:8080` | HTTP listen address |
-| `RESTOP_RESTIC_PATH` | `restic` | Restic executable name or path |
-| `RESTOP_METADATA_TIMEOUT` | `1m` | Timeout for snapshot and directory metadata commands |
-| `RESTOP_MAX_COMMANDS` | `8` | Maximum total concurrent restic processes |
-| `RESTOP_MAX_DOWNLOADS` | `2` | Maximum concurrent downloads; cannot exceed the command limit |
-| `RESTOP_SHUTDOWN_TIMEOUT` | `30s` | Time allowed for active requests before forced cancellation |
-| `RESTOP_LOG_LEVEL` | `info` | JSON log level: `debug`, `info`, `warn`, or `error` |
+| Variable                  | Default          | Purpose                                                       |
+| ------------------------- | ---------------- | ------------------------------------------------------------- |
+| `RESTOP_ADDR`             | `127.0.0.1:8080` | HTTP listen address                                           |
+| `RESTOP_RESTIC_PATH`      | `restic`         | Restic executable name or path                                |
+| `RESTOP_METADATA_TIMEOUT` | `1m`             | Timeout for snapshot and directory metadata commands          |
+| `RESTOP_MAX_COMMANDS`     | `8`              | Maximum total concurrent restic processes                     |
+| `RESTOP_MAX_DOWNLOADS`    | `2`              | Maximum concurrent downloads; cannot exceed the command limit |
+| `RESTOP_SHUTDOWN_TIMEOUT` | `30s`            | Time allowed for active requests before forced cancellation   |
+| `RESTOP_LOG_LEVEL`        | `info`           | JSON log level: `debug`, `info`, `warn`, or `error`           |
 
 The liveness endpoint is `GET /healthz`. It only reports that the process is serving HTTP and never returns repository information. Repository failures do not make liveness fail.
 
@@ -48,17 +48,3 @@ Keep Restop on a loopback or private Unix-network boundary and put an authentica
 Restop intentionally has no mutation endpoints, database, metadata cache, search, preview, or multi-repository mode. The embedded HTMX asset enhances navigation, but every browsing link and download continues to work with JavaScript disabled.
 
 HTMX 2.0.8 is pinned and vendored into the executable; its license is recorded in [`THIRD_PARTY_NOTICES.md`](THIRD_PARTY_NOTICES.md).
-
-## Verification
-
-```sh
-go test ./...
-go vet ./...
-go build ./cmd/restop
-```
-
-Tests use a fake restic executable and do not need a repository. An opt-in integration test initializes a temporary real repository, backs up nested fixtures, and validates browsing plus file and tar downloads:
-
-```sh
-RESTOP_INTEGRATION=1 go test ./internal/restic -run TestIntegrationRepository
-```
