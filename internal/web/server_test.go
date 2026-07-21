@@ -116,18 +116,34 @@ func TestValidationAndHealth(t *testing.T) {
 }
 
 func TestFileDownloadHeadersAndBody(t *testing.T) {
-	response := request(t, fixtureServer(t), "/snapshots/"+testSnapshotID+"/download?path=%2Fodd%20%22%20name.txt")
+	response := request(t, fixtureServer(t), "/snapshots/"+testSnapshotID+"/download?path=%2Fodd%2520%2522%2520name.txt")
 	if response.Code != http.StatusOK {
 		t.Fatalf("status %d: %s", response.Code, response.Body.String())
 	}
 	if response.Header().Get("Content-Type") != "application/octet-stream" {
 		t.Fatalf("unexpected content type %q", response.Header().Get("Content-Type"))
 	}
-	if disposition := response.Header().Get("Content-Disposition"); !strings.HasPrefix(disposition, "attachment;") || !strings.Contains(disposition, "name.txt") {
+	if disposition := response.Header().Get("Content-Disposition"); !strings.HasPrefix(disposition, "attachment;") || !strings.Contains(disposition, `filename="odd \" name.txt"`) {
 		t.Fatalf("unsafe or missing disposition %q", disposition)
 	}
 	if response.Body.String() != "payload" {
 		t.Fatalf("unexpected payload %q", response.Body.String())
+	}
+}
+
+func TestRepositoryPathDecodesURLSymbols(t *testing.T) {
+	for value, expected := range map[string]string{
+		"/hash%23name":    "/hash#name",
+		"/percent%25name": "/percent%name",
+		"/plus%2Bname":    "/plus+name",
+		"/plain+name":     "/plain+name",
+	} {
+		actual, err := cleanRepositoryPath(value)
+		if err != nil {
+			t.Errorf("cleanRepositoryPath(%q): %v", value, err)
+		} else if actual != expected {
+			t.Errorf("cleanRepositoryPath(%q) = %q, want %q", value, actual, expected)
+		}
 	}
 }
 

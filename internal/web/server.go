@@ -112,6 +112,14 @@ func cleanRepositoryPath(value string) (string, error) {
 	if value == "" {
 		return "/", nil
 	}
+
+	// Decode paths that retained an encoded layer after query parsing.
+	value, err := url.PathUnescape(value)
+	if err != nil {
+		return "", errors.New("path contains invalid URL encoding")
+	}
+
+	// Validate the decoded path before passing it to restic.
 	if strings.ContainsRune(value, 0) || !strings.HasPrefix(value, "/") || path.Clean(value) != value {
 		return "", errors.New("path must be a cleaned absolute repository path")
 	}
