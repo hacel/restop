@@ -35,12 +35,11 @@ type Snapshot struct {
 }
 
 type Node struct {
-	Name       string    `json:"name"`
-	Type       string    `json:"type"`
-	Path       string    `json:"path"`
-	Size       uint64    `json:"size"`
-	ModTime    time.Time `json:"mtime"`
-	LinkTarget string    `json:"linktarget"`
+	Name    string    `json:"name"`
+	Type    string    `json:"type"`
+	Path    string    `json:"path"`
+	Size    uint64    `json:"size"`
+	ModTime time.Time `json:"mtime"`
 }
 
 type commandError struct {
@@ -158,7 +157,16 @@ func decodeNodes(data []byte) ([]Node, error) {
 		if value.StructType == "snapshot" {
 			continue
 		}
-		if value.Path == "" || value.Type == "" || value.Path != "/" && value.Name == "" {
+		if value.Type == "" {
+			return nil, errors.New("decode restic listing: node is missing required fields")
+		}
+
+		// Restic omits symlink targets from JSON listings, so expose only files and
+		// directories the web interface can browse or download.
+		if value.Type != "file" && value.Type != "dir" {
+			continue
+		}
+		if value.Path == "" || value.Path != "/" && value.Name == "" {
 			return nil, errors.New("decode restic listing: node is missing required fields")
 		}
 		nodes = append(nodes, value.Node)

@@ -51,11 +51,15 @@ func TestDirectoryJSONLAndSorting(t *testing.T) {
 '{"struct_type":"node","name":"z.txt","type":"file","path":"/z.txt","size":3}' \
 '{"struct_type":"node","name":"nested.txt","type":"file","path":"/dir/nested.txt"}' \
 '{"struct_type":"node","name":"Alpha","type":"dir","path":"/Alpha"}' \
+'{"struct_type":"node","name":"current","type":"symlink","path":"/current"}' \
 '{"struct_type":"node","name":"beta","type":"dir","path":"/beta"}'
 `), time.Second, 2, 1)
 	nodes, err := client.Directory(context.Background(), strings.Repeat("a", 64), "/")
 	if err != nil {
 		t.Fatal(err)
+	}
+	if len(nodes) != 3 {
+		t.Fatalf("non-file and non-directory nodes were not ignored: %#v", nodes)
 	}
 	if got := []string{nodes[0].Name, nodes[1].Name, nodes[2].Name}; strings.Join(got, ",") != "Alpha,beta,z.txt" {
 		t.Fatalf("unexpected order or depth filtering: %v", got)
