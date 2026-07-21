@@ -18,6 +18,7 @@ import (
 	"sync/atomic"
 	"time"
 
+	"github.com/dustin/go-humanize"
 	"restop/internal/restic"
 )
 
@@ -78,7 +79,7 @@ func shortID(snapshot restic.Snapshot) string {
 func templateFunctions() template.FuncMap {
 	return template.FuncMap{
 		"bytes":     formatBytes,
-		"localTime": func(value time.Time) string { return value.Local().Format("2006-01-02 15:04:05 MST") },
+		"localTime": humanize.Time,
 		"queryPath": url.QueryEscape,
 		"shortID":   shortID,
 	}

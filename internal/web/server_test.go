@@ -67,7 +67,7 @@ func TestSnapshotsPageEscapesAndEnhancesLinks(t *testing.T) {
 		t.Fatalf("status %d: %s", response.Code, response.Body.String())
 	}
 	body := response.Body.String()
-	for _, expected := range []string{"host&lt;script&gt;", "/data&amp;more", "hx-get=", "class=\"row-link\"", "href=\"/snapshots/" + testSnapshotID} {
+	for _, expected := range []string{"ago", "host&lt;script&gt;", "/data&amp;more", "hx-get=", "class=\"row-link\"", "href=\"/snapshots/" + testSnapshotID} {
 		if !strings.Contains(body, expected) {
 			t.Fatalf("response missing %q: %s", expected, body)
 		}
@@ -83,6 +83,9 @@ func TestDirectorySortsAndRoundTripsNames(t *testing.T) {
 		t.Fatalf("status %d: %s", response.Code, response.Body.String())
 	}
 	body := response.Body.String()
+	if !strings.Contains(body, "ago") {
+		t.Fatalf("modified timestamp was not humanized: %s", body)
+	}
 	if strings.Index(body, "a&amp;b") > strings.Index(body, "z-file.txt") {
 		t.Fatal("directory was not sorted before files")
 	}
