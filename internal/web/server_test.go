@@ -105,6 +105,9 @@ func TestDirectorySortsAndRoundTripsNames(t *testing.T) {
 	if strings.Contains(body, "<th><span class=\"sr-only\">Actions</span></th>") || strings.Contains(body, "aria-label=\"Download ") {
 		t.Fatalf("directory table still contains the download column: %s", body)
 	}
+	if strings.Contains(body, "<th>Location</th>") {
+		t.Fatalf("directory table contains the search-only location column: %s", body)
+	}
 	if !strings.Contains(body, `aria-current="page" title="01 Jan 2024, 00:00:00 UTC">aaaaaaaa`) {
 		t.Fatal("snapshot breadcrumb is not accessible or escaped")
 	}
@@ -145,6 +148,7 @@ func TestSnapshotSearchUsesURLQueryAndLinksResults(t *testing.T) {
 		`title="02 Jan 2024, 03:04:05 UTC"`,
 		`2.0 KiB`,
 		`report &amp; notes.txt`,
+		`<th>Location</th>`,
 		`class="row-link file-row-link" href="/snapshots/` + testSnapshotID + `/download?path=%252Fwork%252Freport%2b%2526%2bnotes.txt" title="02 Jan 2024, 03:04:05 UTC"`,
 		`class="wrap location-cell"`,
 		`class="secondary-row-link"`,

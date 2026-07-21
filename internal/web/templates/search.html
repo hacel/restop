@@ -14,21 +14,7 @@
   {{template "snapshot-search" .}}
   {{if .SearchQuery}}
     {{if .Nodes}}
-    <div class="table-wrap">
-      <table>
-        <thead><tr><th>Name</th><th>Location</th><th>Size</th><th>Modified</th></tr></thead>
-        <tbody>
-        {{range .Nodes}}
-          <tr>
-            <td class="name-cell"><span class="type-icon" aria-hidden="true">{{if eq .Type "dir"}}▸{{else}}·{{end}}</span>{{if eq .Type "dir"}}<a class="row-link" href="/snapshots/{{$.Snapshot.ID}}?path={{queryPath .Path}}"{{if not .ModTime.IsZero}} title="{{exactTime .ModTime}}"{{end}} hx-get="/snapshots/{{$.Snapshot.ID}}?path={{queryPath .Path}}" hx-target="#main" hx-select="#main" hx-swap="outerHTML" hx-push-url="true">{{.Name}}</a>{{else}}<a class="row-link file-row-link" href="/snapshots/{{$.Snapshot.ID}}/download?path={{queryPath .Path}}"{{if not .ModTime.IsZero}} title="{{exactTime .ModTime}}"{{end}}>{{.Name}}</a>{{end}}</td>
-            <td class="wrap location-cell"><a class="secondary-row-link" href="/snapshots/{{$.Snapshot.ID}}?path={{queryPath (parentPath .Path)}}" hx-get="/snapshots/{{$.Snapshot.ID}}?path={{queryPath (parentPath .Path)}}" hx-target="#main" hx-select="#main" hx-swap="outerHTML" hx-push-url="true">{{parentPath .Path}}</a></td>
-            <td>{{if eq .Type "file"}}{{bytes .Size}}{{else}}—{{end}}</td>
-            <td>{{if .ModTime.IsZero}}—{{else}}{{template "relative-time" .ModTime}}{{end}}</td>
-          </tr>
-        {{end}}
-        </tbody>
-      </table>
-    </div>
+    {{template "node-table" .}}
     {{else}}
     <div class="empty"><h2>No matches</h2><p>No files or directories in this snapshot match <code>{{.SearchQuery}}</code>.</p></div>
     {{end}}

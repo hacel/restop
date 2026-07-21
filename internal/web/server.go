@@ -38,13 +38,14 @@ type pageData struct {
 	Title     string
 	Snapshots []restic.Snapshot
 	restic.Directory
-	Path        string
-	DisplayPath string
-	SearchQuery string
-	Breadcrumbs []breadcrumb
-	Status      int
-	Heading     string
-	Message     string
+	Path         string
+	DisplayPath  string
+	SearchQuery  string
+	ShowLocation bool
+	Breadcrumbs  []breadcrumb
+	Status       int
+	Heading      string
+	Message      string
 }
 
 type Server struct {
@@ -260,7 +261,7 @@ func (s *Server) searchHandler(w http.ResponseWriter, r *http.Request) {
 		s.renderError(w, http.StatusNotFound, "Not found", "The requested snapshot does not exist.")
 		return
 	}
-	data := pageData{Title: "Search", SearchQuery: query}
+	data := pageData{Title: "Search", SearchQuery: query, ShowLocation: true}
 	data.Snapshot = snapshots[0]
 
 	// An empty query renders the search page without starting a find command.
