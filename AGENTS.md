@@ -1,6 +1,7 @@
 # Repository Guidelines
 
 - Run `just test` after changes; it formats, diagnoses, vets, and race-tests the project, including the real-restic test when available.
+- Also run `just fmt` to format files.
 - The default Go build cache is read-only in the agent sandbox. Run Go commands with `GOCACHE=/tmp/restop-go-cache`, for example: `env GOCACHE=/tmp/restop-go-cache just test`.
 - Keep implementation and tests together. For web or download changes, cover status, headers, escaping, path encoding, and streaming.
 - Inline straightforward code and extract repeated patterns. Order functions bottom-up with callees before callers; separate non-obvious logical blocks with a blank line and a brief comment.
