@@ -14,7 +14,10 @@ import (
 	"restop/internal/restic"
 )
 
-const testSnapshotID = "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+const (
+	testSnapshotID      = "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+	testOtherSnapshotID = "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+)
 
 func testServer(t *testing.T, body string, maxCommands, maxDownloads int) http.Handler {
 	t.Helper()
@@ -33,7 +36,11 @@ func fixtureServer(t *testing.T) http.Handler {
 	t.Helper()
 	return testServer(t, `case "$1" in
 snapshots)
-  printf '%s' '[{"time":"2024-01-01T00:00:00Z","hostname":"host<script>","paths":["/data&more"],"tags":["daily"],"id":"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa","short_id":"aaaaaaaa","summary":{"total_bytes_processed":2048}}]'
+  if [ "$#" -eq 3 ]; then
+    printf '%s' '[{"time":"2024-01-01T00:00:00Z","hostname":"host<script>","paths":["/data&more"],"tags":["daily"],"id":"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa","short_id":"aaaaaaaa","summary":{"total_bytes_processed":2048}}]'
+  else
+    printf '%s' '[{"time":"2024-01-02T00:00:00Z","hostname":"other-host","paths":["/other"],"tags":["weekly"],"id":"bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb","short_id":"bbbbbbbb","summary":{"total_bytes_processed":4096}},{"time":"2024-01-01T00:00:00Z","hostname":"host<script>","paths":["/data&more"],"tags":["daily"],"id":"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa","short_id":"aaaaaaaa","summary":{"total_bytes_processed":2048}}]'
+  fi
   ;;
 ls)
   printf '%s\n' '{"struct_type":"snapshot","id":"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa","short_id":"aaaaaaaa","hostname":"host<script>","time":"2024-01-01T00:00:00Z","summary":{"total_bytes_processed":2048}}'
@@ -71,7 +78,7 @@ func TestSnapshotsPageEscapesAndEnhancesLinks(t *testing.T) {
 		t.Fatalf("status %d: %s", response.Code, response.Body.String())
 	}
 	body := response.Body.String()
-	for _, expected := range []string{"ago", `datetime="2024-01-01T00:00:00Z"`, `class="row-link" href="/snapshots/` + testSnapshotID + `?path=%2F" title="01 Jan 2024, 00:00:00 UTC"`, "host&lt;script&gt;", "/data&amp;more", "2.0 KiB", "hx-get="} {
+	for _, expected := range []string{"ago", "2 total", `datetime="2024-01-01T00:00:00Z"`, `class="link-cell"><a class="row-link" href="/snapshots/` + testSnapshotID + `?path=%2F" title="01 Jan 2024, 00:00:00 UTC"`, `class="link-cell"><a class="row-link" href="/snapshots/` + testOtherSnapshotID + `?path=%2F" title="02 Jan 2024, 00:00:00 UTC"`, `hx-get="/snapshots/` + testSnapshotID + `?path=%2F"`, `hx-get="/snapshots/` + testOtherSnapshotID + `?path=%2F"`, "host&lt;script&gt;", "/data&amp;more", "2.0 KiB", "hx-get="} {
 		if !strings.Contains(body, expected) {
 			t.Fatalf("response missing %q: %s", expected, body)
 		}
@@ -274,5 +281,11 @@ func TestStaticAssetsAreEmbedded(t *testing.T) {
 	response := request(t, fixtureServer(t), "/assets/htmx.min.js")
 	if response.Code != http.StatusOK || !strings.Contains(response.Body.String(), "htmx") {
 		t.Fatalf("HTMX asset unavailable: %d", response.Code)
+	}
+
+	// Keep full-row links scoped to their cells for WebKit versions that ignore positioned rows.
+	response = request(t, fixtureServer(t), "/assets/app.css")
+	if response.Code != http.StatusOK || !strings.Contains(response.Body.String(), ".link-cell { position:relative; }") || strings.Contains(response.Body.String(), "tbody tr { position:relative; }") {
+		t.Fatalf("safe row-link styles unavailable: %d %s", response.Code, response.Body.String())
 	}
 }
